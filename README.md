@@ -14,13 +14,16 @@ The primary goal is to ensure that merged PRs have passed the required review an
     - **Code Review (`CR_Passed`)**: Was the PR approved by at least one reviewer?
     - **Status Checks (`CHECKS_PASSED`)**: Did all the required status checks for the head commit pass successfully?
 - **Reporting**: Generates a final report in CSV format detailing the compliance status of each PR.
-- **Modular Structure**: The code is logically separated into components like `extract.py`, `transform.py`, and `api_helpers.py`.
+- **Modular Structure**: The code is logically separated into a data pipeline (`extract.py`, `transform.py`) and a robust, reusable `GitHubAPIClient`.
 
 ---
 ## Bonus Features Implemented
 This project goes beyond the core requirements to include several bonus features for robustness and professional-grade quality:
 
-- [x] **Robust API Pagination**: Handles repositories with hundreds of PRs by correctly parsing the `Link` header.
+- [x] **Robust API Client**: A centralized client handles all GitHub API interactions with features like:
+    - **Automatic Retries**: Uses exponential backoff for transient network errors.
+    - **Rate Limit Handling**: Intelligently waits and retries by respecting API rate limit headers.
+    - **Request Timeouts**: Prevents the application from hanging on unresponsive requests.
 - [x] **Optional Date Range Filtering**: Allows users to generate reports for specific time periods via command-line arguments.
 - [x] **Informative Logging**: Implements a structured logging system for clear, informative output and easier debugging.
 - [x] **Incremental Progress & Professional Workflow**: Developed using a feature-branch workflow with clear, atomic commits and pull requests.
@@ -42,9 +45,10 @@ scytale_github_analyzer/
 │   ├── __init__.py       
 │   ├── constants.py      # Centralized constants
 │   ├── logging_config.py # Logging setup
+│   ├── github_api_client.py   # Reusable client for all GitHub API calls
 │   ├── extract.py        
 │   ├── transform.py      
-│   └── api_helpers.py    # API enrichment functions
+│   └── api_helpers.py    # High-level helpers for compliance checks
 │
 └── outputs/              
     ├── raw/

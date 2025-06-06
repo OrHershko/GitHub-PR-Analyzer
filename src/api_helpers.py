@@ -1,18 +1,8 @@
-import os
-from dotenv import load_dotenv
 import logging
-import requests
-from src.constants import GITHUB_API_URL, OWNER, REPO
+from src.constants import OWNER, REPO
+from src.github_api_client import GitHubAPIClient
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-PAT = os.getenv("GITHUB_PAT")
-
-headers = {
-    "Authorization": f"Bearer {PAT}",
-    "Accept": "application/vnd.github.v3+json",
-}
 
 def check_code_review_passed(pr_number: int) -> bool:
     """
@@ -23,17 +13,13 @@ def check_code_review_passed(pr_number: int) -> bool:
 
     Returns:
         bool: True if the PR was approved, False otherwise.
+
+    Raises:
+        ValueError: When unexpected API-related errors occur.
     """
-    if not PAT:
-        logger.error("GitHub PAT not found in api_helpers. Disabling API checks.")
-        return False
-    
-    reviews_url = f"{GITHUB_API_URL}/repos/{OWNER}/{REPO}/pulls/{pr_number}/reviews"
-
     try:
-        response = requests.get(reviews_url, headers=headers)
-        response.raise_for_status()
-
+        api_client = GitHubAPIClient()
+        response = api_client.get_pull_request_reviews(OWNER, REPO, pr_number)
         reviews = response.json()
         
         for review in reviews:
@@ -44,7 +30,12 @@ def check_code_review_passed(pr_number: int) -> bool:
         logger.debug(f"PR #{pr_number} has no 'APPROVED' review.")
         return False
         
-    except requests.exceptions.RequestException as e:
+    except ValueError as e:
+        if "GitHub PAT not found" in str(e):
+            logger.error("GitHub PAT not found in api_helpers. Disabling API checks.")
+            return False
+        raise
+    except Exception as e:
         logger.error(f"Error fetching reviews for PR #{pr_number}: {e}")
         return False
 
@@ -57,17 +48,13 @@ def check_all_checks_passed(commit_sha: str) -> bool:
 
     Returns:
         bool: True if the combined status is 'success', False otherwise.
+
+    Raises:
+        ValueError: When unexpected API-related errors occur.
     """
-    if not PAT:
-        logger.error("GitHub PAT not found in api_helpers. Disabling API checks.")
-        return False
-    
-    status_url = f"{GITHUB_API_URL}/repos/{OWNER}/{REPO}/commits/{commit_sha}/status"
-    
     try:
-        response = requests.get(status_url, headers=headers)
-        response.raise_for_status()
-        
+        api_client = GitHubAPIClient()
+        response = api_client.get_commit_status(OWNER, REPO, commit_sha)
         status = response.json()
         
         if status['state'] == 'success':
@@ -77,6 +64,11 @@ def check_all_checks_passed(commit_sha: str) -> bool:
             logger.debug(f"Commit {commit_sha[:7]} has status {status['state']}.")
             return False
         
-    except requests.exceptions.RequestException as e:
+    except ValueError as e:
+        if "GitHub PAT not found" in str(e):
+            logger.error("GitHub PAT not found in api_helpers. Disabling API checks.")
+            return False
+        raise
+    except Exception as e:
         logger.error(f"Error fetching status for commit {commit_sha[:7]}: {e}")
         return False
