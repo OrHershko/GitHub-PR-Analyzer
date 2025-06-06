@@ -8,15 +8,16 @@ from src.api_helpers import check_all_checks_passed, check_code_review_passed
 
 logger = logging.getLogger(__name__)
 
-def process_pull_requests(input_path: Path, output_path: Path):
+def process_pull_requests(input_path: Path, output_path: Path, start_date: str = None, end_date: str = None):
     """
-    Reads raw pull request data, processes it, and saves a structured report.
-    In this initial version, it processes basic fields and uses placeholders
-    for review and check statuses.
+    Reads raw pull request data, optionally filters it by date, enriches it,
+    and saves the final report.
 
     Args:
         input_path (Path): Path to the raw JSON file of pull requests.
         output_path (Path): Path to save the final CSV report.
+        start_date (str): Optional start date for filtering PRs.
+        end_date (str): Optional end date for filtering PRs.
     """
     logger.info(f"Reading raw data from {input_path}...")
     try:
@@ -30,14 +31,24 @@ def process_pull_requests(input_path: Path, output_path: Path):
         logger.warning("Input file is empty. No data to process.")
         return
     
-    logger.info(f"Starting to process {len(raw_prs)} pull requests...")
+    df = pd.DataFrame(raw_prs)
+    logger.info(f"Loaded {len(df)} total merged PRs.")
+
+    if start_date or end_date:
+        logger.info("Applying date filter...")
+        df = filter_by_date(df, start_date, end_date)
+        logger.info(f"Found {len(df)} PRs within the specified date range.")
+    
+    if df.empty:
+        logger.warning("No pull requests match the specified date range. Nothing to process.")
+        return
 
     processed_prs = []
-    for i, pr in enumerate(raw_prs):
+    for i, pr in df.iterrows():
         pr_number = pr['number']
         commit_sha = pr['head']['sha']
         
-        logger.info(f"Processing PR #{pr_number} ({i+1}/{len(raw_prs)})...")
+        logger.info(f"Processing PR #{pr_number} ({i+1}/{len(df)})...")
         cr_passed = check_code_review_passed(pr_number)
         checks_passed = check_all_checks_passed(commit_sha)
 
@@ -69,3 +80,17 @@ def process_pull_requests(input_path: Path, output_path: Path):
 
 
     
+def filter_by_date(df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
+    """
+    Filters a DataFrame of PRs by merge date.
+
+    Args:
+        df (pd.DataFrame): The DataFrame to filter.
+        start_date (str): The start date for filtering.
+        end_date (str): The end date for filtering.
+    """
+    if start_date:
+        df = df[df['merged_at'] >= start_date]
+    if end_date:
+        df = df[df['merged_at'] <= end_date]
+    return df
