@@ -1,7 +1,10 @@
 import json
 import logging
+import time
 import pandas as pd
 from pathlib import Path
+
+from src.api_helpers import check_all_checks_passed, check_code_review_passed
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +33,26 @@ def process_pull_requests(input_path: Path, output_path: Path):
     logger.info(f"Starting to process {len(raw_prs)} pull requests...")
 
     processed_prs = []
-    for pr in raw_prs:
-        # TODO using placeholders for now
-        cr_passed = "TODO"
-        checks_passed = "TODO"
+    for i, pr in enumerate(raw_prs):
+        pr_number = pr['number']
+        commit_sha = pr['head']['sha']
+        
+        logger.info(f"Processing PR #{pr_number} ({i+1}/{len(raw_prs)})...")
+        cr_passed = check_code_review_passed(pr_number)
+        checks_passed = check_all_checks_passed(commit_sha)
 
         processed_prs.append({
-            "pr_number": pr['number'],
+            "pr_number": pr_number,
             "pr_title": pr['title'],
             "author": pr['user']['login'],
             "merge_date": pr['merged_at'],
             "CR_Passed": cr_passed,
             "CHECK_PASSED": checks_passed,
         })
+
+        # Small delay to avoid rate limiting
+        time.sleep(0.1)
+
 
     df = pd.DataFrame(processed_prs)
 
