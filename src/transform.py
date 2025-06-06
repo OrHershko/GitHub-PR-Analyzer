@@ -1,6 +1,5 @@
 import json
 import logging
-import time
 import pandas as pd
 from pathlib import Path
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 def process_pull_requests(input_path: Path, output_path: Path, start_date: str = None, end_date: str = None):
     """
     Reads raw pull request data, optionally filters it by date, enriches it,
-    and saves the final report.
+    and saves the final report to a CSV file.
 
     Args:
         input_path (Path): Path to the raw JSON file of pull requests.
@@ -61,10 +60,6 @@ def process_pull_requests(input_path: Path, output_path: Path, start_date: str =
             "CHECK_PASSED": checks_passed,
         })
 
-        # Small delay to avoid rate limiting
-        time.sleep(0.1)
-
-
     df = pd.DataFrame(processed_prs)
 
     if not df.empty:
@@ -77,12 +72,13 @@ def process_pull_requests(input_path: Path, output_path: Path, start_date: str =
     df.to_csv(output_path, index=False)
 
     logger.info(f"Successfully processed {len(df)} pull requests. Report saved to {output_path}")
-
-
     
 def filter_by_date(df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
     """
     Filters a DataFrame of PRs by merge date.
+    If only the start date is provided, the function returns the PRs merged on or after the start date.
+    If both start and end date are provided, the function returns the PRs merged between the start and end date.
+    else, the function returns the original DataFrame.
 
     Args:
         df (pd.DataFrame): The DataFrame to filter.

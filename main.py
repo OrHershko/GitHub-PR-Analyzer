@@ -9,7 +9,7 @@ def main():
     setup_logging()
     logger = logging.getLogger(__name__)
 
-    # -- Parse command line arguments setup --
+    # -- Parse command line arguments --
     parser = argparse.ArgumentParser(description="Fetch and analyze GitHub PRs for compliance.")
     parser.add_argument(
         "--start-date",
@@ -21,8 +21,9 @@ def main():
         type=str,
         help="Filter PRs merged on or before this date. Format: YYYY-MM-DD"
     )
-    # -- Parse command line arguments --
     args = parser.parse_args()
+
+    # -- Start GitHub PR Analysis --
     logger.info("--- Starting GitHub PR Analysis ---")
     if args.start_date or args.end_date:
         logger.info(f"Running with date filter: Start: {args.start_date}, End: {args.end_date}")
@@ -35,8 +36,8 @@ def main():
         return
 
     logger.info("Extraction step completed successfully.")
-
     logger.info(">>> Step 2: Processing data...")
+
     try:
         process_pull_requests(
             input_path=RAW_PULL_REQUESTS_PATH,

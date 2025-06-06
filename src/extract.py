@@ -1,17 +1,11 @@
-import os
-from dotenv import load_dotenv
-import requests
-from src.constants import GITHUB_API_URL, OWNER, REPO
 import logging
-from pathlib import Path
 import json
 import re
+from pathlib import Path
+from src.constants import OWNER, REPO
+from src.github_api_client import GitHubAPIClient
 
 logger = logging.getLogger(__name__)
-
-load_dotenv()
-
-PAT = os.getenv("GITHUB_PAT")
 
 def parse_link_header(headers: dict) -> str | None:
     """
@@ -49,32 +43,27 @@ def fetch_pull_requests(output_path: Path):
     Args:
         output_path (Path): The path where the raw JSON file will be saved.
     """
-    if not PAT:
-        logger.error("GitHub Personal Access Token (PAT) not found. Please ensure you have a .env file with GITHUB_PAT='your_token'")
-        raise ValueError("GitHub PAT not found.")
-
-    headers = {
-        "Authorization": f"Bearer {PAT}",
-        "Accept": "application/vnd.github.v3+json",
-    }
-    
-    params = {
-        "state": "closed",
-        "per_page": 1,
-    }
+    api_client = GitHubAPIClient()
 
     # The starting URL for the first page
-    next_page_url = f"{GITHUB_API_URL}/repos/{OWNER}/{REPO}/pulls"
+    next_page_url = None
+    params = {"state": "closed", "per_page": 100}
 
     all_closed_prs = []
     page_count = 1
 
-    while next_page_url:
+    while True:
         logger.info(f"Fetching page {page_count} of closed PRs...")
-        response = requests.get(next_page_url, headers=headers, params=params)
-        response.raise_for_status()
-
+        
+        if next_page_url:
+            # For subsequent pages, use the full URL from pagination
+            response = api_client.make_request(next_page_url)
+        else:
+            # For the first page, use the helper method
+            response = api_client.get_pull_requests(OWNER, REPO, **params)
+        
         prs_on_page = response.json()
+        
         if not prs_on_page:
             logger.info("Received an empty page, stopping.")
             break
@@ -82,12 +71,14 @@ def fetch_pull_requests(output_path: Path):
         all_closed_prs.extend(prs_on_page)
         logger.info(f"Fetched {len(prs_on_page)} PRs on page {page_count}")
 
-        # After the first request, the params are included in the next_page_url, so we don't need them.
-        params = None 
         page_count += 1
         next_page_url = parse_link_header(response.headers)
+        
+        # Break if no more pages
+        if not next_page_url:
+            break
 
-    logger.info(f"\nFinished fetching. Total closed PRs found: {len(all_closed_prs)}")
+    logger.info(f"Finished fetching. Total closed PRs found: {len(all_closed_prs)}")
 
     merged_prs = [pr for pr in all_closed_prs if pr.get("merged_at") is not None]
 
