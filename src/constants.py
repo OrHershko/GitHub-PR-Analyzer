@@ -17,6 +17,7 @@ BASE_DIR = Path(__file__).parent.parent
 OUTPUT_DIR = BASE_DIR / "outputs"
 RAW_DATA_DIR = OUTPUT_DIR / "raw"
 PROCESSED_DATA_DIR = OUTPUT_DIR / "processed"
+PROCESSED_REPORT_PATH = PROCESSED_DATA_DIR / "pr_report.csv"
 
 # Output file paths
 RAW_PULL_REQUESTS_PATH = RAW_DATA_DIR / "pull_requests.json"
